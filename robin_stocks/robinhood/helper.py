@@ -26,10 +26,10 @@ def login_required(func):
        in."""
     @wraps(func)
     def login_wrapper(*args, **kwargs):
-        global LOGGED_IN
-        if not LOGGED_IN:
-            raise Exception('{} can only be called when logged in'.format(
-                func.__name__))
+        # global LOGGED_IN
+        # if not LOGGED_IN:
+        #     raise Exception('{} can only be called when logged in'.format(
+        #         func.__name__))
         return(func(*args, **kwargs))
     return(login_wrapper)
 
