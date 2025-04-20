@@ -125,19 +125,6 @@ def login(username=None, password=None, expiresIn=86400, scope='internal', store
     """Handles the login process to Robinhood, including multi-factor authentication, session persistence, and verification handling."""
     print("Starting login process...")
     device_token = generate_device_token()
-    home_dir = os.path.expanduser("~")
-    data_dir = os.path.join(home_dir, ".tokens")
-
-    if pickle_path:
-        if not os.path.isabs(pickle_path):
-            pickle_path = os.path.normpath(os.path.join(os.getcwd(), pickle_path))
-        data_dir = pickle_path
-
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-
-    creds_file = "robinhood" + pickle_name + ".pickle"
-    pickle_path = os.path.join(data_dir, creds_file)
 
     url = login_url()
     login_payload = {
@@ -155,37 +142,6 @@ def login(username=None, password=None, expiresIn=86400, scope='internal', store
 
     if mfa_code:
         login_payload['mfa_code'] = mfa_code
-    # If authentication has been stored in pickle file then load it. Stops login server from being pinged so much.
-    if False: #os.path.isfile(pickle_path):
-        # **Load cached authentication session if available**
-        if store_session:
-            try:
-                with open(pickle_path, 'rb') as f:
-                    pickle_data = pickle.load(f)
-                    access_token = pickle_data['access_token']
-                    token_type = pickle_data['token_type']
-                    refresh_token = pickle_data['refresh_token']
-                    pickle_device_token = pickle_data['device_token']
-                    login_payload['device_token'] = pickle_device_token
-                    set_login_state(True)
-                    update_session(
-                            'Authorization', '{0} {1}'.format(token_type, access_token))
-                    # Try to load account profile to check that authorization token is still valid.
-                    res = request_get(
-                        positions_url(), 'pagination', {'nonzero': 'true'}, jsonify_data=False)
-                    # Raises exception if response code is not 200.
-                    res.raise_for_status()
-                    return({'access_token': access_token, 'token_type': token_type,
-                            'expires_in': expiresIn, 'scope': scope, 
-                            'detail': 'logged in using authentication in {0}'.format(creds_file),
-                            'backup_code': None, 'refresh_token': refresh_token})
-            except Exception:
-                    print(
-                        "ERROR: There was an issue loading pickle file. Authentication may be expired - logging in normally.", file=get_output())
-                    set_login_state(False)
-                    update_session('Authorization', None)
-        else:
-            os.remove(pickle_path)
 
     # **Attempt to login normally**
     if not username:
@@ -206,18 +162,6 @@ def login(username=None, password=None, expiresIn=86400, scope='internal', store
 
                 # Reattempt login after verification
                 data = request_post(url, login_payload)
-
-            # if 'access_token' in data:
-            #     token = '{0} {1}'.format(data['token_type'], data['access_token'])
-                # update_session('Authorization', token)
-                # set_login_state(True)
-
-            # if store_session:
-            #     with open(pickle_path, 'wb') as f:
-            #         pickle.dump({'token_type': data['token_type'],
-            #                      'access_token': data['access_token'],
-            #                      'refresh_token': data['refresh_token'],
-            #                      'device_token': login_payload['device_token']}, f)
 
             update_session('Authorization', None)
             return data
